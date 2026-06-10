@@ -1,0 +1,62 @@
+/**
+ * draft.js — amulyaachari18 (Email & Scheduler Lead)
+ * Week 1 Task: Build email draft from voice transcript
+ * 
+ * HOW TO TEST:
+ * Open browser console and run:
+ * const d = new EmailDraft();
+ * d.fromTranscript("Hello doctor I need to reschedule my appointment");
+ * console.log(d.toJSON());
+ */
+
+export class EmailDraft {
+  constructor() {
+    this.to = '';
+    this.subject = '';
+    this.body = '';
+    this.scheduleTime = null;
+  }
+
+  // Build email from voice transcript
+  fromTranscript(transcript) {
+    this.body = transcript.trim();
+    this.subject = this._generateSubject(transcript);
+    return this;
+  }
+
+  // Auto generate subject from first 6 words
+  _generateSubject(text) {
+    const words = text.trim().split(' ').slice(0, 6).join(' ');
+    return words.length > 0 ? words + '…' : 'Voice message';
+  }
+
+  setRecipient(email) {
+    this.to = email;
+    return this;
+  }
+
+  setSchedule(time) {
+    this.scheduleTime = time;
+    return this;
+  }
+
+  // Check if email is ready to send
+  isValid() {
+    return this.to.includes('@') && this.body.length > 0;
+  }
+
+  // Convert to JSON for sending
+  toJSON() {
+    return {
+      to: this.to,
+      subject: this.subject,
+      body: this.body,
+      scheduleTime: this.scheduleTime,
+    };
+  }
+
+  // Show a summary of the email
+  getSummary() {
+    return `To: ${this.to} | Subject: ${this.subject} | Words: ${this.body.split(' ').length}`;
+  }
+}
