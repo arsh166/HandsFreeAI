@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HandsFreeAI</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --g: #1D9E75; --gl: #E1F5EE; --gd: #085041;
+      --r: #E24B4A; --rl: #FCEBEB;
+      --am: #EF9F27; --aml: #FAEEDA; --amd: #633806;
+      --b: #378ADD; --bl: #E6F1FB; --bd: #0C447C;
+      --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+      --text: #e8eaf0; --muted: #7b7f8e; --radius: 14px;
+    }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+    #app { width: 100%; max-width: 560px; }
+    .header { display: flex; align-items: center; gap: 12px; margin-bottom: 1.5rem; }
+    .logo { width: 44px; height: 44px; border-radius: 12px; background: var(--g); display: flex; align-items: center; justify-content: center; font-size: 22px; color: #fff; }
+    .app-name { font-size: 18px; font-weight: 600; }
+    .app-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .live-badge { margin-left: auto; display: flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; background: var(--rl); color: var(--r); font-size: 12px; font-weight: 500; opacity: 0; transition: opacity 0.4s; }
+    .live-badge.show { opacity: 1; }
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--r); animation: blink 0.8s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 1rem; }
+    .hero { padding: 2rem 1.5rem 1.5rem; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; }
+    .ring { width: 90px; height: 90px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 38px; transition: background 0.4s; }
+    .ring.idle { background: #22253a; color: var(--muted); }
+    .ring.counting { background: var(--aml); color: var(--amd); }
+    .ring.listening { background: var(--rl); color: var(--r); animation: ripple 1s infinite; }
+    .ring.done { background: var(--gl); color: var(--gd); }
+    @keyframes ripple { 0%{box-shadow:0 0 0 0 rgba(226,75,74,0.35)} 70%{box-shadow:0 0 0 22px rgba(226,75,74,0)} 100%{box-shadow:0 0 0 0 rgba(226,75,74,0)} }
+    .countdown-num { font-size: 80px; font-weight: 600; color: var(--am); line-height: 1; display: none; animation: pop 0.3s ease; }
+    @keyframes pop { from{transform:scale(1.4);opacity:0} to{transform:scale(1);opacity:1} }
+    .state-title { font-size: 22px; font-weight: 600; }
+    .state-sub { font-size: 14px; color: var(--muted); line-height: 1.6; max-width: 320px; }
+    .tts-bar { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 10px; background: var(--bl); border: 1px solid rgba(55,138,221,0.3); font-size: 13px; color: var(--bd); width: 100%; max-width: 420px; opacity: 0; transition: opacity 0.3s; }
+    .tts-bar.show { opacity: 1; }
+    .tts-waves { display: flex; gap: 2px; align-items: center; }
+    .tw { width: 3px; border-radius: 2px; background: var(--b); height: 4px; }
+    .tw.a{animation:twa 0.5s 0.0s infinite alternate} .tw.b{animation:twa 0.5s 0.1s infinite alternate} .tw.c{animation:twa 0.5s 0.2s infinite alternate} .tw.d{animation:twa 0.5s 0.3s infinite alternate}
+    @keyframes twa { to { height: 14px; } }
+    .waveform-wrap { display: none; }
+    .waveform { display: flex; align-items: center; gap: 3px; height: 44px; }
+    .wbar { width: 5px; border-radius: 3px; background: var(--r); height: 6px; transition: height 0.08s; }
+    .silence-wrap { width: 100%; max-width: 320px; display: none; }
+    .silence-lbl { font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+    .silence-track { height: 5px; border-radius: 3px; background: #22253a; overflow: hidden; }
+    .silence-fill { height: 100%; width: 0%; border-radius: 3px; background: var(--g); transition: width 1s linear, background 0.3s; }
+    .transcript-section { border-top: 1px solid var(--border); padding: 1.25rem 1.5rem; display: none; }
+    .t-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .t-body { font-size: 15px; line-height: 1.8; color: var(--text); min-height: 48px; }
+    .t-interim { color: var(--muted); }
+    .t-empty { color: var(--muted); font-size: 13px; }
+    .word-count { margin-left: auto; font-size: 11px; color: var(--muted); }
+    .cmd-section { border-top: 1px solid var(--border); padding: 0.875rem 1.5rem; display: none; }
+    .cmd-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+    .cmd-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-family: monospace; background: #22253a; border: 1px solid var(--border); color: var(--muted); transition: all 0.2s; }
+    .chip.active { background: var(--gl); border-color: var(--g); color: var(--gd); font-weight: 600; }
+    .email-section { border-top: 1px solid var(--border); padding: 1.25rem 1.5rem; display: none; }
+    .email-label { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+    .email-card { background: #22253a; border-radius: 10px; border: 1px solid var(--border); overflow: hidden; font-size: 13px; }
+    .email-row { display: flex; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+    .email-row:last-child { border-bottom: none; }
+    .email-key { color: var(--muted); width: 52px; flex-shrink: 0; }
+    .email-val { color: var(--text); line-height: 1.5; }
+    .sched-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+    .sched-chip { padding: 5px 12px; border-radius: 20px; font-size: 12px; background: #22253a; border: 1px solid var(--border); color: var(--muted); cursor: pointer; transition: all 0.15s; }
+    .sched-chip.active { background: var(--gl); border-color: var(--g); color: var(--gd); font-weight: 500; }
+    .send-btn { width: 100%; margin-top: 12px; padding: 11px; border-radius: 10px; border: none; background: var(--g); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .send-btn:hover { background: var(--gd); }
+    .sent-banner { border-top: 1px solid var(--border); padding: 1rem 1.5rem; display: none; align-items: center; gap: 10px; background: rgba(29,158,117,0.1); }
+    .sent-banner i { font-size: 22px; color: var(--g); }
+    .sent-title { font-weight: 600; color: var(--g); }
+    .sent-detail { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .log-section { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.5rem; }
+    .log-title { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+    .log-entry { display: flex; gap: 8px; font-size: 13px; color: var(--text); padding: 5px 0; border-bottom: 1px solid var(--border); animation: fadeIn 0.3s ease; }
+    .log-entry:last-child { border-bottom: none; }
+    .log-time { color: var(--muted); font-size: 11px; flex-shrink: 0; margin-top: 2px; }
+    .log-icon { color: var(--g); flex-shrink: 0; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(3px)} to{opacity:1;transform:translateY(0)} }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="logo"><i class="ti ti-microphone"></i></div>
+    <div><div class="app-name">HandsFreeAI</div><div class="app-sub">Zero buttons. Zero choices. Just speak.</div></div>
+    <div class="live-badge" id="live-badge"><div class="live-dot"></div> Live</div>
+  </div>
+  <div class="card">
+    <div class="hero">
+      <div class="ring idle" id="ring"><i class="ti ti-accessibility"></i></div>
+      <div class="countdown-num" id="countdown-num">3</div>
+      <div class="state-title" id="state-title">Starting up…</div>
+      <div class="state-sub" id="state-sub">HandsFreeAI is loading. No action needed.</div>
+      <div class="tts-bar" id="tts-bar">
+        <div class="tts-waves"><div class="tw a"></div><div class="tw b"></div><div class="tw c"></div><div class="tw d"></div></div>
+        <span id="tts-msg">Speaking…</span>
+      </div>
+      <div class="waveform-wrap" id="wave-wrap"><div class="waveform" id="waveform"></div></div>
+      <div class="silence-wrap" id="silence-wrap">
+        <div class="silence-lbl" id="sil-lbl">Auto-stop in 20s of silence</div>
+        <div class="silence-track"><div class="silence-fill" id="sil-fill"></div></div>
+      </div>
+    </div>
+    <div class="transcript-section" id="transcript-section">
+      <div class="t-label"><i class="ti ti-file-text" style="font-size:13px"></i>Live transcript<span class="word-count" id="word-count"></span></div>
+      <div class="t-body"><span class="t-empty" id="t-empty">Listening for speech…</span><span id="t-final"></span><span class="t-interim" id="t-interim"></span></div>
+    </div>
+    <div class="cmd-section" id="cmd-section">
+      <div class="cmd-label"><i class="ti ti-wand" style="font-size:12px"></i> Say any of these</div>
+      <div class="cmd-chips">
+        <span class="chip" id="cmd-stop">"stop"</span>
+        <span class="chip" id="cmd-email">"send email"</span>
+        <span class="chip" id="cmd-paste">"paste to document"</span>
+        <span class="chip" id="cmd-read">"read transcript"</span>
+        <span class="chip" id="cmd-again">"record again"</span>
+      </div>
+    </div>
+    <div class="email-section" id="email-section">
+      <div class="email-label"><i class="ti ti-mail" style="font-size:13px"></i> Auto-generated email</div>
+      <div class="email-card">
+        <div class="email-row"><span class="email-key">To</span><span class="email-val" id="em-to">doctor@clinic.com</span></div>
+        <div class="email-row"><span class="email-key">Subject</span><span class="email-val" id="em-subject">Voice message</span></div>
+        <div class="email-row"><span class="email-key">Body</span><span class="email-val" id="em-body"></span></div>
+      </div>
+      <div class="sched-chips">
+        <span class="sched-chip active" onclick="pickSchedule(this,'Now')">Now</span>
+        <span class="sched-chip" onclick="pickSchedule(this,'In 1 hour')">In 1 hour</span>
+        <span class="sched-chip" onclick="pickSchedule(this,'Tomorrow 9am')">Tomorrow 9am</span>
+        <span class="sched-chip" onclick="pickSchedule(this,'Monday 9am')">Monday 9am</span>
+      </div>
+      <button class="send-btn" onclick="sendEmail()"><i class="ti ti-send"></i> Send Email</button>
+    </div>
+    <div class="sent-banner" id="sent-banner">
+      <i class="ti ti-circle-check"></i>
+      <div><div class="sent-title" id="sent-title">Email sent!</div><div class="sent-detail" id="sent-detail">Delivered successfully</div></div>
+    </div>
+  </div>
+  <div class="log-section">
+    <div class="log-title"><i class="ti ti-list" style="font-size:12px;vertical-align:-1px;margin-right:4px"></i>Activity log</div>
+    <div id="log-entries">
+      <div class="log-entry"><span class="log-time" id="start-time"></span><i class="ti ti-power log-icon"></i><span>HandsFreeAI launched</span></div>
+    </div>
+  </div>
+</div>
+<script>
+  // BUILD WAVEFORM
+  const BARS = 22;
+  const wf = document.getElementById('waveform');
+  for(let i=0;i<BARS;i++){const b=document.createElement('div');b.className='wbar';b.id='wb'+i;wf.appendChild(b);}
+  document.getElementById('start-time').textContent = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+
+  let waveInt=null, silInt=null, silSec=0, recog=null, isRec=false, finalTxt='', scheduleChoice='Now';
+
+  // TTS
+  function say(msg){ if(!window.speechSynthesis)return; window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(msg); u.rate=0.93; window.speechSynthesis.speak(u); }
+
+  function showTTS(msg){ const b=document.getElementById('tts-bar'); b.classList.add('show'); document.getElementById('tts-msg').textContent=msg; say(msg); setTimeout(()=>b.classList.remove('show'),4000); }
+
+  function setRing(state,icon){ const r=document.getElementById('ring'); r.className='ring '+state; r.innerHTML='<i class="ti '+icon+'"></i>'; }
+
+  function setText(title,sub){ document.getElementById('state-title').textContent=title; document.getElementById('state-sub').textContent=sub; }
+
+  function addLog(icon,text){ const t=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}); const el=document.createElement('div'); el.className='log-entry'; el.innerHTML=`<span class="log-time">${t}</span><i class="ti ${icon} log-icon"></i><span>${text}</span>`; document.getElementById('log-entries').prepend(el); }
+
+  function flashCmd(id){ const el=document.getElementById(id); if(!el)return; el.classList.add('active'); setTimeout(()=>el.classList.remove('active'),2000); }
+
+  function startWave(){ document.getElementById('wave-wrap').style.display='block'; waveInt=setInterval(()=>{ for(let i=0;i<BARS;i++){const el=document.getElementById('wb'+i); if(el)el.style.height=(Math.random()*34+6)+'px';} },90); }
+
+  function stopWave(){ clearInterval(waveInt); document.getElementById('wave-wrap').style.display='none'; for(let i=0;i<BARS;i++){const el=document.getElementById('wb'+i);if(el)el.style.height='6px';} }
+
+  function resetSilence(){ silSec=0; }
+
+  function startSilence(){
+    silSec=0;
+    document.getElementById('silence-wrap').style.display='block';
+    silInt=setInterval(()=>{
+      silSec++;
+      const pct=Math.min((silSec/20)*100,100);
+      const fill=document.getElementById('sil-fill');
+      fill.style.width=pct+'%';
+      fill.style.background=pct>75?'var(--r)':'var(--g)';
+      document.getElementById('sil-lbl').textContent=silSec<20?`Auto-stop in ${20-silSec}s of silence`:'Stopping…';
+      if(silSec>=20){ clearInterval(silInt); stopRecording(true); }
+    },1000);
+  }
+
+  // COUNTDOWN THEN RECORD
+  function startWithCountdown(){
+    showTTS('Recording starts in 3.');
+    let n=3;
+    const el=document.getElementById('countdown-num');
+    setRing('counting','ti-clock');
+    setText('Get ready…','Recording starts automatically.');
+    el.style.display='block'; el.textContent=n;
+    const t=setInterval(()=>{
+      n--;
+      if(n>0){
+        el.style.display='none'; void el.offsetWidth; el.style.display='block'; el.textContent=n;
+        say(String(n));
+        setText('Get ready…','Starting in '+n+'…');
+      } else {
+        clearInterval(t);
+        el.style.display='none';
+        startRecording();
+      }
+    },1000);
+  }
+
+  function startRecording(){
+    isRec=true; finalTxt='';
+    setRing('listening','ti-microphone');
+    setText('Listening…','Speak naturally. Say "stop" or "send email" any time.');
+    document.getElementById('live-badge').classList.add('show');
+    document.getElementById('transcript-section').style.display='block';
+    document.getElementById('cmd-section').style.display='block';
+    showTTS('Recording started. Speak now.');
+    addLog('ti-microphone','Recording started — microphone is live');
+    startWave(); startSilence();
+
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR){ addLog('ti-alert-circle','Use Chrome or Edge for speech recognition'); return; }
+
+    recog=new SR(); recog.continuous=true; recog.interimResults=true; recog.lang='en-US';
+
+    recog.onresult=(e)=>{
+      resetSilence();
+      let interim='';
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        const txt=e.results[i][0].transcript;
+        if(e.results[i].isFinal){
+          finalTxt+=txt+' ';
+          checkCommand(txt.toLowerCase());
+          document.getElementById('t-empty').style.display='none';
+          document.getElementById('t-final').textContent=finalTxt;
+          const wc=finalTxt.trim().split(/\s+/).filter(Boolean).length;
+          document.getElementById('word-count').textContent=wc+' words';
+        } else { interim=txt; }
+      }
+      document.getElementById('t-interim').textContent=interim;
+    };
+    recog.onerror=()=>{};
+    recog.onend=()=>{ if(isRec) recog.start(); };
+    recog.start();
+  }
+
+  function checkCommand(text){
+    if(text.includes('stop')||text.includes('finish')||text.includes('done')){ flashCmd('cmd-stop'); stopRecording(false); }
+    else if(text.includes('send email')||text.includes('email')){ flashCmd('cmd-email'); stopRecording(false); setTimeout(openEmail,500); }
+    else if(text.includes('paste')||text.includes('document')){ flashCmd('cmd-paste'); navigator.clipboard?.writeText(finalTxt); showTTS('Text copied. Press Control V to paste.'); }
+    else if(text.includes('read')||text.includes('play back')){ flashCmd('cmd-read'); say(finalTxt||'No transcript yet.'); }
+    else if(text.includes('record again')||text.includes('start over')){ flashCmd('cmd-again'); stopRecording(false); setTimeout(startWithCountdown,800); }
+  }
+
+  function stopRecording(auto){
+    if(!isRec)return;
+    isRec=false;
+    clearInterval(silInt);
+    stopWave();
+    if(recog){recog.stop();recog=null;}
+    document.getElementById('live-badge').classList.remove('show');
+    document.getElementById('silence-wrap').style.display='none';
+    setRing('done','ti-check');
+    setText('Recording complete','Say "send email" or "paste to document".');
+    const wc=finalTxt.trim().split(/\s+/).filter(Boolean).length;
+    showTTS((auto?'Auto-stopped. ':'Recording stopped. ')+wc+' words captured. Say send email or paste to document.');
+    addLog('ti-player-stop',auto?'Auto-stopped — silence detected':'Recording stopped');
+    listenForPostCommands();
+  }
+
+  function listenForPostCommands(){
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR)return;
+    const r=new SR(); r.continuous=true; r.lang='en-US';
+    r.onresult=(e)=>{ for(let i=e.resultIndex;i<e.results.length;i++){ if(e.results[i].isFinal){ checkCommand(e.results[i][0].transcript.toLowerCase()); } } };
+    r.onerror=()=>{}; r.onend=()=>{ if(!isRec){ try{r.start();}catch(e){} } };
+    r.start();
+  }
+
+  function openEmail(){
+    const words=finalTxt.trim().split(' ').slice(0,6).join(' ');
+    document.getElementById('em-subject').textContent=words?words+'…':'Voice message';
+    document.getElementById('em-body').textContent=finalTxt.trim();
+    document.getElementById('email-section').style.display='block';
+    setRing('done','ti-mail');
+    setText('Email draft ready','Choose send time or say "send now".');
+    showTTS('Email draft ready. Choose a send time.');
+    addLog('ti-mail','Email draft auto-generated');
+  }
+
+  function pickSchedule(el,label){
+    scheduleChoice=label;
+    document.querySelectorAll('.sched-chip').forEach(c=>c.classList.remove('active'));
+    el.classList.add('active');
+    showTTS('Scheduled for '+label);
+  }
+
+  function sendEmail(){
+    document.getElementById('email-section').style.display='none';
+    const banner=document.getElementById('sent-banner');
+    banner.style.display='flex';
+    const msg=scheduleChoice==='Now'?'Email sent!':'Email scheduled for '+scheduleChoice;
+    document.getElementById('sent-title').textContent=msg;
+    document.getElementById('sent-detail').textContent='To: '+document.getElementById('em-to').textContent;
+    setRing('done','ti-circle-check');
+    setText('Done!','Zero buttons pressed. Say "record again" any time.');
+    showTTS(scheduleChoice==='Now'?'Email sent.':'Email scheduled for '+scheduleChoice);
+    addLog('ti-send',msg);
+  }
+
+  window.pickSchedule=pickSchedule;
+  window.sendEmail=sendEmail;
+  window.addEventListener('load',()=>{ setTimeout(startWithCountdown,800); });
+</script>
+</body>
+</html>
